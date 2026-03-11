@@ -7,7 +7,6 @@ pub async fn convert_data(input_path: String) -> AppResult<String> {
     let path = Path::new(&input_path);
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
 
-    // Move heavy parsing to a blocking task to avoid locking the async runtime
     let result = tokio::task::spawn_blocking(move || {
         match ext.as_str() {
             "xlsx" | "xls" => DataService::convert_excel_to_json(&input_path),
@@ -16,7 +15,7 @@ pub async fn convert_data(input_path: String) -> AppResult<String> {
         }
     })
     .await
-    .map_err(|e| AppError::Unknown(e.to_string()))??;
+    .map_err(|e: tokio::task::JoinError| AppError::Unknown(e.to_string()))??;
 
     Ok(result)
 }

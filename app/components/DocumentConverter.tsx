@@ -2,14 +2,57 @@
 
 import React, { useState } from 'react';
 import { useTauriIpc } from '../hooks/useTauriIpc';
+import {
+  FileText,
+  FileDown,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Search,
+  Save,
+} from 'lucide-react';
+import { open, save } from '@tauri-apps/plugin-dialog';
 
 export default function DocumentConverter() {
   const [inputPath, setInputPath] = useState('');
   const [outputPath, setOutputPath] = useState('');
+
   const { execute, data, error, isLoading } = useTauriIpc<
     string,
     { inputPath: string; outputPath: string }
   >();
+
+  const handleBrowseInput = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        title: 'Select Text Document',
+        filters: [{ name: 'Text Files', extensions: ['txt'] }],
+      });
+
+      if (selected && typeof selected === 'string') {
+        setInputPath(selected);
+      }
+    } catch (err) {
+      console.error('Failed to open dialog:', err);
+    }
+  };
+
+  const handleBrowseOutput = async () => {
+    try {
+      const selected = await save({
+        title: 'Save PDF As',
+        filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
+        defaultPath: 'rendered_document.pdf',
+      });
+
+      if (selected && typeof selected === 'string') {
+        setOutputPath(selected);
+      }
+    } catch (err) {
+      console.error('Failed to save dialog:', err);
+    }
+  };
 
   const handleConvert = async () => {
     if (!inputPath || !outputPath) return;
@@ -19,114 +62,131 @@ export default function DocumentConverter() {
     );
   };
 
+  const getFileName = (path: string) => path.split(/[/\\]/).pop() || path;
+
   return (
-    <div className="p-8 bg-white rounded-2xl shadow-xl border border-gray-100 space-y-6">
-      <div className="border-b border-gray-100 pb-4">
-        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
           Document Renderer
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-slate-500">
           Transform standard TXT files into highly polished PDF representations.
         </p>
       </div>
 
-      <div className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Source File Path (.txt)
-          </label>
-          <input
-            type="text"
-            value={inputPath}
-            onChange={(e) => setInputPath(e.target.value)}
-            placeholder="C:\Documents\notes.txt"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 border transition-colors bg-gray-50 hover:bg-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Destination File Path (.pdf)
-          </label>
-          <input
-            type="text"
-            value={outputPath}
-            onChange={(e) => setOutputPath(e.target.value)}
-            placeholder="C:\Documents\output_rendered.pdf"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3 border transition-colors bg-gray-50 hover:bg-white"
-          />
-        </div>
-
-        <button
-          onClick={handleConvert}
-          disabled={isLoading || !inputPath || !outputPath}
-          className={`w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white transition-all transform active:scale-[0.98]
-            ${isLoading ? 'bg-purple-400 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 shadow-lg shadow-purple-500/30'}`}
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
+      <div className="bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(147,51,234,0.1)] border border-slate-200 overflow-hidden relative">
+        <div className="p-8 space-y-8">
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-slate-700">
+              Source File
+            </label>
+            <div
+              onClick={handleBrowseInput}
+              className="relative group cursor-pointer"
+            >
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <FileText
+                  className={`h-5 w-5 transition-colors ${inputPath ? 'text-purple-500' : 'text-slate-400 group-hover:text-purple-500'}`}
+                />
+              </div>
+              <div
+                className={`block w-full pl-11 pr-24 py-3 border rounded-lg text-sm transition-all group-hover:bg-purple-50/50 group-hover:border-purple-400 truncate
+                ${inputPath ? 'bg-white border-purple-300 text-slate-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Rendering PDF...
-            </span>
-          ) : (
-            'Render to PDF'
-          )}
-        </button>
+                {inputPath
+                  ? getFileName(inputPath)
+                  : 'Click to select a .txt file...'}
+              </div>
+              <div className="absolute inset-y-0 right-1.5 flex items-center">
+                <div className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors flex items-center gap-1">
+                  <Search size={14} />
+                  Browse
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-slate-700">
+              Save Destination
+            </label>
+            <div
+              onClick={handleBrowseOutput}
+              className="relative group cursor-pointer"
+            >
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <FileDown
+                  className={`h-5 w-5 transition-colors ${outputPath ? 'text-purple-500' : 'text-slate-400 group-hover:text-purple-500'}`}
+                />
+              </div>
+              <div
+                className={`block w-full pl-11 pr-24 py-3 border rounded-lg text-sm transition-all group-hover:bg-purple-50/50 group-hover:border-purple-400 truncate
+                ${outputPath ? 'bg-white border-purple-300 text-slate-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+              >
+                {outputPath
+                  ? getFileName(outputPath)
+                  : 'Choose where to save the PDF...'}
+              </div>
+              <div className="absolute inset-y-0 right-1.5 flex items-center">
+                <div className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors flex items-center gap-1">
+                  <Save size={14} />
+                  Save As
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleConvert}
+            disabled={isLoading || !inputPath || !outputPath}
+            className={`w-full py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2
+              ${
+                !inputPath || !outputPath
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                  : isLoading
+                    ? 'bg-purple-600/80 text-white cursor-wait relative overflow-hidden'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 active:scale-[0.99] border border-purple-600'
+              }
+            `}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Rendering PDF...
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4" />
+                Render to PDF
+              </>
+            )}
+          </button>
+        </div>
 
         {error && (
-          <div className="p-4 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100 flex items-start">
-            <svg
-              className="w-5 h-5 mr-3 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span>{error}</span>
+          <div className="px-8 flex items-start pb-8">
+            <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3 text-red-800">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+              <div className="text-sm shadow-sm">{error}</div>
+            </div>
           </div>
         )}
 
         {data && (
-          <div className="p-5 bg-purple-50 border border-purple-200 rounded-lg shadow-inner flex flex-col items-center text-center">
-            <svg
-              className="w-12 h-12 text-purple-500 mb-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <p className="text-sm font-bold text-purple-900">{data}</p>
+          <div className="border-t border-slate-200 bg-slate-950 p-6 relative group">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-xs font-semibold text-purple-400 tracking-wider uppercase flex items-center gap-2">
+                <CheckCircle2 size={14} />
+                Operation Successful
+              </h3>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+              <p className="text-sm text-slate-300 font-medium">{data}</p>
+              <p className="text-xs text-slate-500 mt-2 break-all">
+                Saved at: {outputPath}
+              </p>
+            </div>
           </div>
         )}
       </div>

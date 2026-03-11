@@ -6,7 +6,6 @@ use std::path::Path;
 pub struct ImageService;
 
 impl ImageService {
-    /// Batch converts multiple images to WebP format using multi-threading (Rayon)
     pub fn batch_convert_to_webp(
         input_paths: Vec<String>,
         output_dir: String,
@@ -18,10 +17,9 @@ impl ImageService {
             std::fs::create_dir_all(output_path)?;
         }
 
-        // Apply parallel iteration to leverage all CPU cores
         let results: Result<Vec<String>, _> = input_paths
             .par_iter()
-            .map(|input_str| {
+            .map(|input_str| -> AppResult<String> {
                 let input_path = Path::new(input_str);
                 let img = image::open(&input_path)?;
                 
@@ -30,9 +28,7 @@ impl ImageService {
                     .and_then(|s| s.to_str())
                     .unwrap_or("image");
                     
-                let output_file = output_path.join(format!("{}.webp", file_stem));
-                
-                // image crate allows fast encoding via standard features.
+                let output_file = output_path.join(format!("{}.webp", file_stem));                
                 img.save_with_format(&output_file, ImageFormat::WebP)?;
                 
                 Ok(output_file.to_string_lossy().to_string())

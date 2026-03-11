@@ -1,7 +1,5 @@
 use serde::Serialize;
-use std::fmt;
 
-/// Global Error Type for the backend mapped for the frontend
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("I/O Error: {0}")]
@@ -9,6 +7,9 @@ pub enum AppError {
 
     #[error("Image Processing Error: {0}")]
     Image(#[from] image::ImageError),
+
+    #[error("CSV Error: {0}")]
+    Csv(#[from] csv::Error),
 
     #[error("Data Conversion Error: {0}")]
     DataConversion(String),
@@ -25,10 +26,8 @@ impl Serialize for AppError {
     where
         S: serde::Serializer,
     {
-        // Serialize the structured error into a simple string for the frontend
         serializer.serialize_str(&self.to_string())
     }
 }
 
-// Custom type alias for returning our custom AppError
 pub type AppResult<T> = Result<T, AppError>;

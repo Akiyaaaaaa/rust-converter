@@ -11,6 +11,7 @@ use commands::document_builder::*;
 
 fn main() {
     tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             convert_data,
             convert_images,

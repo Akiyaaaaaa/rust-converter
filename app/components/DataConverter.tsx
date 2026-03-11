@@ -2,13 +2,49 @@
 
 import React, { useState } from 'react';
 import { useTauriIpc } from '../hooks/useTauriIpc';
+import {
+  FileSpreadsheet,
+  FileJson,
+  AlertCircle,
+  Loader2,
+  Search,
+} from 'lucide-react';
+import { open } from '@tauri-apps/plugin-dialog';
 
 export default function DataConverter() {
   const [inputPath, setInputPath] = useState('');
+  const [displayFileName, setDisplayFileName] = useState('');
+
   const { execute, data, error, isLoading } = useTauriIpc<
     string,
     { inputPath: string }
   >();
+
+  const handleBrowseFile = async () => {
+    try {
+      const selectedPath = await open({
+        multiple: false,
+        title: 'Select Tabular Data File',
+        filters: [
+          {
+            name: 'Excel & CSV Files',
+            extensions: ['xlsx', 'xls', 'csv'],
+          },
+        ],
+      });
+
+      if (selectedPath && typeof selectedPath === 'string') {
+        setInputPath(selectedPath);
+        const nameWithExt = selectedPath.split(/[/\\]/).pop() || '';
+        const nameOnly =
+          nameWithExt.substring(0, nameWithExt.lastIndexOf('.')) || nameWithExt;
+
+        setDisplayFileName(nameOnly);
+      }
+    } catch (err) {
+      console.error('Failed to open dialog:', err);
+    }
+  };
 
   const handleConvert = async () => {
     if (!inputPath) return;
@@ -16,97 +52,114 @@ export default function DataConverter() {
   };
 
   return (
-    <div className="p-8 bg-white rounded-2xl shadow-xl border border-gray-100 space-y-6">
-      <div className="border-b border-gray-100 pb-4">
-        <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
           Tabular Data Converter
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Convert .xlsx or .csv files into a structured JSON string format.
+        <p className="mt-1 text-sm text-slate-500">
+          Transform .xlsx workbooks or .csv files into structured JSON
+          instantly.
         </p>
       </div>
 
-      <div className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Input File Path
-          </label>
-          <input
-            type="text"
-            value={inputPath}
-            onChange={(e) => setInputPath(e.target.value)}
-            placeholder="e.g. C:\Users\Admin\Documents\data.xlsx"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border transition-colors bg-gray-50 hover:bg-white"
-          />
+      <div className="bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-200 overflow-hidden relative">
+        <div className="p-8 space-y-8">
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-slate-700">
+              Source File
+            </label>
+
+            <div
+              onClick={handleBrowseFile}
+              className="relative group cursor-pointer"
+            >
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <FileSpreadsheet
+                  className={`h-5 w-5 transition-colors ${displayFileName ? 'text-blue-500' : 'text-slate-400 group-hover:text-blue-500'}`}
+                />
+              </div>
+
+              <div
+                className={`block w-full pl-11 pr-24 py-3 border rounded-lg text-sm transition-all group-hover:bg-blue-50/50 group-hover:border-blue-400 
+                ${displayFileName ? 'bg-white border-blue-300 text-slate-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+              >
+                {displayFileName
+                  ? displayFileName
+                  : 'Click to browse file from your computer...'}
+              </div>
+
+              <div className="absolute inset-y-0 right-1.5 flex items-center">
+                <div className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-md group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors flex items-center gap-1">
+                  <Search size={14} />
+                  Browse
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Supported formats: .xlsx, .xls, .csv
+            </p>
+          </div>
+
+          <button
+            onClick={handleConvert}
+            disabled={isLoading || !inputPath}
+            className={`w-full py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2
+              ${
+                !inputPath
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                  : isLoading
+                    ? 'bg-blue-600/80 text-white cursor-wait relative overflow-hidden'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 active:scale-[0.99] border border-blue-600'
+              }
+            `}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing Data...
+              </>
+            ) : (
+              <>
+                <FileJson className="w-4 h-4" />
+                Convert to JSON
+              </>
+            )}
+          </button>
         </div>
 
-        <button
-          onClick={handleConvert}
-          disabled={isLoading || !inputPath}
-          className={`w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white transition-all transform active:scale-[0.98]
-            ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30'}`}
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Processing Data...
-            </span>
-          ) : (
-            'Convert to JSON'
-          )}
-        </button>
-
         {error && (
-          <div className="p-4 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100 flex items-start">
-            <svg
-              className="w-5 h-5 mr-3 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span>{error}</span>
+          <div className="px-8 flex items-start pb-8">
+            <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3 text-red-800">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+              <div className="text-sm shadow-sm">{error}</div>
+            </div>
           </div>
         )}
 
         {data && (
-          <div className="p-5 bg-gray-50 border border-gray-200 rounded-lg shadow-inner">
+          <div className="border-t border-slate-200 bg-slate-950 p-6 relative group">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Success! Extracted JSON:
+              <h3 className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
+                Rendered Output
               </h3>
-              <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                Completed
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] uppercase font-bold text-emerald-500 border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 rounded-sm">
+                  Success
+                </span>
+              </div>
             </div>
-            <pre className="text-xs text-gray-700 overflow-x-auto max-h-72 bg-white p-4 border rounded shadow-sm custom-scrollbar">
-              {data}
-            </pre>
+
+            <div className="relative">
+              <pre className="text-[13px] leading-relaxed font-mono text-emerald-400 overflow-x-auto max-h-[350px] custom-scrollbar selection:bg-emerald-500/30 selection:text-emerald-200">
+                {data}
+              </pre>
+            </div>
           </div>
         )}
       </div>
